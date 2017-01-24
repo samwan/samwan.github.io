@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+		<title>Ships</title>
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	</head>
+	<body style="margin:0px; padding:0px;">
+		<div id="container"></div>
+		<script src="scripts/three.min.js"></script>
+		<script src="scripts/threeoctree.js"></script>
+		<script src="scripts/stats.js"></script>
+		<script>
+
+			// Based on http://www.openprocessing.org/visuals/?visualID=6910
+			var Ship = (function() {
+				// Constants
+				var generateRandomInteger = function(min, max) {
+					return Math.round(Math.random() * (max - min)) + min;
+				}
+				var _neighborhoodRadius = generateRandomInteger(90, 100);
+				var _maxSpeed = generateRandomInteger(4, 5);
+				var _maxSteerForce = generateRandomInteger(0.08, 0.25);
+				
+				var Ship = function(scene, octree, color) {
+					this.chassisColor = color;
+					this.ribbonColor = color;
+					this.initBehavior(scene);
+					this.initChassis(scene);
+					this.initRibbon(scene);
+					this.octree = octree;
+					this.octree.add(this.chassisObject3D);
+				}
+				Ship._neighborhoodRadius = 100;
+				Ship.ribbonTimeDelta = 40;
+				Ship.ribbonWidth = 0.5;
+				Ship.ribbonFadePerStep = 0.5;
+				Ship.ribbonSegmentCount = 5;
+				
+				Ship.prototype.setPosition = function(position) {
+					this.position.copy(position);
+				}
+				
+				// Behavior
+				Ship.prototype.initBehavior = function(scene) {
+					this.position = new THREE.Vector3();
+					this.velocity = new THREE.Vector3();
+				}
+				Ship.prototype.run = function ( ships ) {
+					// Gravitate to center
+					var vector = new THREE.Vector3();
+					var _acceleration = new THREE.Vector3();
+					if ( Math.random() > 0.5 ) {
+						vector.copy(this.position).normalize().multiplyScalar( - _maxSteerForce * 0.9);
+						_acceleration.add( vector );
+					}
+					
+					// Flock
+					if ( Math.random() > 0.5 ) {
+						var neighbors = this.octree.search(this.position, Ship._neighborhoodRadius, true);
+						_acceleration.add( this.alignment( ships, neighbors ) );
+						_acceleration.add( this.cohesion( ships, neighbors ) );
+						_acceleration.add( this.separation( ships, neighbors ) );
+					}
+					
+					// Move
+					this.velocity.add( _acceleration );
+					var l = this.velocity.length();
+					if ( l > _maxSpeed ) {
+						this.velocity.divideScalar( l / _maxSpeed );
+					}
+					this.setPosition(this.position.add( this.velocity ));
+					
+					// Render
+					this.updateChassis(this);
+					this.updateRibbon(this);
+				}
+				Ship.prototype.alignment = function ( ships, neighbors ) {
+					var ship, velSum = new THREE.Vector3(),
+					self = this,
+					count = 0;
+					neighbors.forEach(function(neighbor) {
+						ship = neighbor.object.ship;
+						if ( Math.random() > 0.6 ) return;
+						distance = ship.position.distanceTo( self.position );
+						if ( distance > 0 && distance <= Ship._neighborhoodRadius ) {
+							velSum.add( ship.velocity );
+							count++;
+						}
+					});
+					if ( count > 0 ) {
+						velSum.divideScalar( count );
+						var l = velSum.length();
+						if ( l > _maxSteerForce ) {
+							velSum.divideScalar( l / _maxSteerForce );
+						}
+					}
+					return velSum;
+				}
+				Ship.prototype.cohesion = function ( ships, neighbors ) {
+					var ship, distance,
+					self = this,
+					posSum = new THREE.Vector3(),
+					steer = new THREE.Vector3(),
+					count = 0;
+					neighbors.forEach(function(neighbor) {
+						ship = neighbor.object.ship;
+						if ( Math.random() > 0.6 ) return;
+						distance = ship.position.distanceTo( self.position );
+						if ( distance > 0 && distance <= Ship._neighborhoodRadius ) {
+							posSum.add( ship.position );
+							count++;
+						}
+					});
+					if ( count > 0 ) {
+						posSum.divideScalar( count );
+					}
+					steer.subVectors( posSum, this.position );
+					var l = steer.length();
+					if ( l > _maxSteerForce ) {
+						steer.divideScalar( l / _maxSteerForce );
+					}
+					return steer;
+				}
+				Ship.prototype.separation = function ( ships, neighbors ) {
+					var ship, distance,
+					self = this,
+					posSum = new THREE.Vector3(),
+					repulse = new THREE.Vector3();
+					neighbors.forEach(function(neighbor) {
+						ship = neighbor.object.ship;
+						if ( Math.random() > 0.6 ) return;
+						distance = ship.position.distanceTo( self.position );
+						if ( distance > 0 && distance <= Ship._neighborhoodRadius ) {
+							repulse.subVectors( self.position, ship.position );
+							repulse.normalize();
+							repulse.divideScalar( distance );
+							posSum.add( repulse );
+						}
+					});
+					return posSum;
+				}
+				
+				// Rendering
+				Ship.prototype.initChassis = function(scene) {
+					this.phase = Math.floor( Math.random() * 62.83 );
+					
+					var chassisGeometry = new THREE.Geometry();
+					chassisGeometry.vertices.push( new THREE.Vector3(   5,   0,   0 ));
+					chassisGeometry.vertices.push( new THREE.Vector3( - 5, - 2,   1 ));
+					chassisGeometry.vertices.push( new THREE.Vector3( - 5,   0,   0 ));
+					chassisGeometry.vertices.push( new THREE.Vector3( - 5, - 2, - 1 ));
+					
+					chassisGeometry.vertices.push( new THREE.Vector3(   0,   2, - 6 ));
+					chassisGeometry.vertices.push( new THREE.Vector3(   0,   2,   6 ));
+					chassisGeometry.vertices.push( new THREE.Vector3(   2,   0,   0 ));
+					chassisGeometry.vertices.push( new THREE.Vector3( - 3,   0,   0 ));
+					
+					chassisGeometry.faces.push( new THREE.Face3( 0, 2, 1 ));
+					chassisGeometry.faces.push( new THREE.Face3( 0, 2, 3 ));
+					chassisGeometry.faces.push( new THREE.Face3( 4, 7, 6 ));
+					chassisGeometry.faces.push( new THREE.Face3( 5, 6, 7 ));
+					chassisGeometry.computeFaceNormals();
+					
+					this.chassisObject3D = new THREE.Mesh(chassisGeometry, new THREE.MeshLambertMaterial( { color:this.chassisColor, side: THREE.DoubleSide, wireframe:false } ));
+					this.chassisObject3D.ship = this;
+					scene.add(this.chassisObject3D);
+				}
+				Ship.prototype.updateChassis = function(ship) {
+					// Transform
+					this.chassisObject3D.position.copy( ship.position );
+					this.chassisObject3D.rotation.y = Math.atan2( - ship.velocity.z, ship.velocity.x );
+					this.chassisObject3D.rotation.z = Math.asin( ship.velocity.y / ship.velocity.length() );
+					
+					// Wings
+					this.phase = ( this.phase + ( Math.max( 0, this.chassisObject3D.rotation.z ) + 0.1 )  ) % 62.83;
+					this.chassisObject3D.geometry.vertices[ 5 ].y = this.chassisObject3D.geometry.vertices[ 4 ].y = Math.sin( this.phase ) * 5;
+					this.chassisObject3D.geometry.verticesNeedUpdate = true;
+				}
+				Ship.prototype.initRibbon = function(scene) {
+					this.ribbonSegments = [];
+					this.ribbonIndex = 0;
+					this.lastRibbonIndexIncrementTime = new Date().getTime();
+					this.lastPosition = new THREE.Vector3(0,0,0);
+					this.lastRotation = new THREE.Vector3(0,0,0);
+					for(var i = 0; i < Ship.ribbonSegmentCount; i++) {
+						var geometry = new THREE.Geometry();
+						geometry.vertices.push(new THREE.Vector3());
+						geometry.vertices.push(new THREE.Vector3());
+						geometry.vertices.push(new THREE.Vector3());
+						geometry.vertices.push(new THREE.Vector3());
+						geometry.faces.push(new THREE.Face3(0,1,2));
+						geometry.faces.push(new THREE.Face3(1,3,2));
+						mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color:this.ribbonColor, side:THREE.DoubleSide, wireframe:false, transparent:true }));
+						mesh.visible = false;
+						var segment = {
+							position : new THREE.Vector3(0,0,0),
+							rotation : new THREE.Vector3(0,0,0),
+							mesh : mesh
+						}
+						scene.add(segment.mesh);
+						this.ribbonSegments.push(segment);
+					}
+				}
+				Ship.prototype.updateRibbon = function(ship) {
+					var currentSegment = this.ribbonSegments[this.ribbonIndex];
+					var previousSegment = this.ribbonSegments[(this.ribbonIndex == 0) ? this.ribbonSegments.length - 1 : this.ribbonIndex - 1];
+					
+					var newPosition = this.chassisObject3D.position;
+					var newRotation = this.chassisObject3D.rotation;
+					var segmentVector = newPosition.clone().sub(this.lastPosition);
+					var offset = ship.velocity.clone().cross(newRotation).normalize().multiplyScalar(Ship.ribbonWidth);
+					// var offset = new THREE.Vector3(newRotation.x, newRotation.y, newRotation.z).normalize().multiplyScalar(Ship.ribbonWidth);
+					
+					var geometry = currentSegment.mesh.geometry;
+					geometry.vertices[0] = newPosition.clone().add(offset);
+					geometry.vertices[1] = newPosition.clone().sub(offset);
+					geometry.vertices[2] = previousSegment.mesh.visible ? previousSegment.mesh.geometry.vertices[0] : geometry.vertices[1];
+					geometry.vertices[3] = previousSegment.mesh.visible ? previousSegment.mesh.geometry.vertices[1] : geometry.vertices[0];
+					currentSegment.mesh.geometry.verticesNeedUpdate = true;
+					geometry.computeBoundingSphere();
+					
+					currentSegment.position.copy(newPosition);
+					currentSegment.rotation.copy(newRotation);
+					currentSegment.mesh.visible = true;
+					currentSegment.mesh.material.opacity = 0.8;
+					
+					var now = new Date().getTime();
+					if (now - this.lastRibbonIndexIncrementTime > Ship.ribbonTimeDelta) {
+						var ship = this;
+						this.ribbonSegments.forEach(function(segment) {
+							segment.mesh.material.opacity *= Ship.ribbonFadePerStep;
+						});
+						this.ribbonIndex = (this.ribbonIndex == this.ribbonSegments.length - 1) ? 0 : this.ribbonIndex + 1;
+						this.lastRibbonIndexIncrementTime = now;
+					}
+				}
+				Ship.getRandomColor = (function() {
+					var colors = [
+						0xFDF004,
+						0x49C411,
+						0x008767,
+						0x65CDB2,
+						0xE6191E,
+						0xF8511C,
+						0xE46516,
+						0x8CBFCD,
+						0xB774C1,
+						0xFBB0E1,
+						0xE48EA8,
+						0x4DA4C3,
+						0x6496EB,
+						0xE8C64B,
+						0x4DA4C3,
+						0x6496EB,
+						0xE8C64B
+					];
+					return function() {
+						return colors[Math.floor(Math.random() * colors.length)];
+					}
+				}());
+				
+				return Ship;
+			})();
+		</script>
+
+		<script>
+			var SCREEN_WIDTH = window.innerWidth,
+			SCREEN_HEIGHT = window.innerHeight,
+			SCREEN_WIDTH_HALF = SCREEN_WIDTH  / 2,
+			SCREEN_HEIGHT_HALF = SCREEN_HEIGHT / 2;
+			
+			var camera, scene, renderer;
+			var ships;
+			var stats;
+			var octree
+			init();
+			animate();
+			
+			function init() {
+				camera = new THREE.PerspectiveCamera( 70, SCREEN_WIDTH / SCREEN_HEIGHT, 1, 10000 );
+				camera.position.z = 200;
+				scene = new THREE.Scene();
+				scene.fog = new THREE.FogExp2( 0x000000, 0.0015 );
+				
+				hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.3 );
+				hemiLight.position.set( 0, 1000, 0 );
+				scene.add( hemiLight );
+				
+				dirLight = new THREE.DirectionalLight( 0xffffff, 1 );
+				dirLight.position.set( 0, 1, 0).normalize();
+				scene.add( dirLight );
+				// 
+				var geometry = new THREE.SphereGeometry( 2000, 16, 16 );
+				var material = new THREE.MeshBasicMaterial( {color: 0xffffff, side:THREE.BackSide, wireframe:false, fog:false } );
+				var sphere = new THREE.Mesh( geometry, material );
+				scene.add( sphere );
+
+
+				var generateRings = function() {
+					var addRing = function(options) {
+						// radiusTop, radiusBottom, height, radiusSegments, heightSegments, openEnded, thetaStart, thetaLength
+						var ringRadius = 1800;
+						var geometry = new THREE.CylinderGeometry( ringRadius, ringRadius, options.height, 20, 1, true );
+						var material = new THREE.MeshBasicMaterial( {color: options.color, side:THREE.BackSide, wireframe:false, fog:false } );
+						var ring = new THREE.Mesh( geometry, material );
+						ring.position.copy(new THREE.Vector3(0, options.top));
+						
+						scene.add( ring );
+					}
+					addRing({ color:Ship.getRandomColor(), top:0, height:10 });
+				}
+				generateRings();
+				
+				octree = new THREE.Octree();
+				var shipCount = 100;
+				ships = [];
+				var ship;
+				var instantiationRange = 2000;
+				for ( var i = 0; i < shipCount; i ++ ) {
+					ship = ships[ i ] = new Ship(scene, octree, Ship.getRandomColor());
+					ship.setPosition(new THREE.Vector3(
+						Math.random() * instantiationRange - instantiationRange / 2,
+						Math.random() * instantiationRange - instantiationRange / 2,
+						Math.random() * instantiationRange - instantiationRange / 2
+					));
+					ship.velocity.y = Math.random() * 2 - 1;
+					ship.velocity.z = Math.random() * 2 - 1;
+				}
+				
+				renderer = new THREE.WebGLRenderer();
+				renderer.setClearColor( 0xffffff );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( SCREEN_WIDTH, SCREEN_HEIGHT );
+				document.body.appendChild( renderer.domElement );
+				
+				// stats = new Stats();
+				// stats.domElement.style.position = 'absolute';
+				// stats.domElement.style.left = '0px';
+				// stats.domElement.style.top = '0px';
+				// document.getElementById( 'container' ).appendChild(stats.domElement);
+				
+				window.addEventListener( 'resize', onWindowResize, false );
+			}
+
+			function onWindowResize() {
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+				renderer.setSize( window.innerWidth, window.innerHeight );
+			}
+
+			function animate() {
+				requestAnimationFrame( animate );
+				render();
+				// stats.update();
+			}
+			
+			function render() {
+				ships.forEach(function(ship) { ship.run(ships); });
+				
+				// var direction = ships[0].velocity.clone().normalize();
+				// var cameraOffset = new THREE.Vector3(10,0,10);
+				// var cameraGoal = ships[0].position.clone().sub(direction.clone().multiplyScalar(100)).add(cameraOffset);
+				// var cameraAcceleration = cameraGoal.sub(camera.position).multiplyScalar( 0.8 );
+				// camera.position.add(cameraAcceleration);
+				// camera.rotation.copy(cameraAcceleration.normalize());
+				// var newCameraRotationMatrix = new THREE.Matrix4().lookAt( camera.position, cameraAcceleration, camera.up );
+				// var currentCameraRotationMatrix.extractRotation(camera.matrix);
+				// camera.this.quaternion.setFromRotationMatrix( m1 );
+				// 		
+				camera.lookAt(ships[0].position.clone());
+				
+				// camera.position.x = ships[0].position.x;
+				// camera.position.y = ships[0].position.y;
+				// camera.position.z = ships[0].position.z + 250;
+				
+				renderer.render( scene, camera );
+				octree.update();
+				octree.rebuild(true);
+			}
+		</script><canvas width="1440" height="755" style="width: 1440px; height: 755px;"></canvas>
+	
+
+</body></html>
