@@ -3,8 +3,14 @@
 		<title>Ships</title>
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 	</head>
-	<body style="margin:0px; padding:0px;">
+	<body style="margin:0px; padding:0px; font-size:16px; font-family:courier-new garamond helveticaneue-light; line-height:2rem;">
 		<div id="container"></div>
+		<div style='position:absolute; left:0px; top:0px; padding:2rem;'>
+			<div class='rainbow' style='color:#444; font-size:3rem; margin-bottom:1rem;'>Hello world.</div>
+			<div class='rainbow' style='font-size:1.4rem;'>Work with people to make good things for people.</div>
+			<div class='rainbow' style='font-size:1.4rem;'>Care, question, do, be, and appreciate.</div>
+		</div>
+		
 		<script src="scripts/three.min.js"></script>
 		<script src="scripts/threeoctree.js"></script>
 		<script src="scripts/stats.js"></script>
@@ -306,7 +312,8 @@
 						
 						scene.add( ring );
 					}
-					addRing({ color:Ship.getRandomColor(), top:0, height:10 });
+					var randomColor = Ship.getRandomColor();
+					addRing({ color:randomColor, top:0, height:10 });
 				}
 				generateRings();
 				
@@ -376,7 +383,22 @@
 				octree.update();
 				octree.rebuild(true);
 			}
+			
+			function rainbowify(className) {
+				var elements = document.getElementsByClassName('rainbow');
+				Array.prototype.forEach.call(elements, function(element) {
+					var text = element.innerHTML;
+					element.innerHTML = '';
+					var chars = text.split(' ');
+					for(var i = 0; i < chars.length; i++) {
+						var span = document.createElement('span');
+						span.innerHTML = chars[i] + '&nbsp;';
+						span.style.color = '#' + Ship.getRandomColor().toString(16);
+						element.appendChild(span);
+					}
+				});
+			}
+			rainbowify('rainbow');
+			
 		</script><canvas width="1440" height="755" style="width: 1440px; height: 755px;"></canvas>
-	
-
 </body></html>
