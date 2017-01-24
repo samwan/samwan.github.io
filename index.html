@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
-		<title>Ships</title>
+		<title>:-P</title>
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 	</head>
 	<body style="margin:0px; padding:0px; font-size:16px; font-family:courier-new garamond helveticaneue-light; line-height:2rem;">
@@ -309,11 +309,13 @@
 						var material = new THREE.MeshBasicMaterial( {color: options.color, side:THREE.BackSide, wireframe:false, fog:false } );
 						var ring = new THREE.Mesh( geometry, material );
 						ring.position.copy(new THREE.Vector3(0, options.top));
-						
+						ring.rotation[options.rotation[0]] = options.rotation[1];
 						scene.add( ring );
 					}
 					var randomColor = Ship.getRandomColor();
-					addRing({ color:randomColor, top:0, height:10 });
+					addRing({ color:randomColor, top:0, height:5, rotation:['x', 0] });
+					// addRing({ color:randomColor, top:0, height:5, rotation:['y', Math.PI / 2] });
+					// addRing({ color:randomColor, top:0, height:5, rotation:['z', Math.PI / 2] });
 				}
 				generateRings();
 				
