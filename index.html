@@ -5,21 +5,13 @@
 	</head>
 	<body style="margin:0px; padding:0px; font-size:16px; font-family:courier-new garamond helveticaneue-light; line-height:2rem;">
 		<div id="container"></div>
-		<div style='position:absolute; left:0px; top:0px; padding:2rem;'>
-<!--
-			<div class='rainbow' style='color:#444; font-size:3rem; margin-bottom:1rem;'>Hello world.</div>
-			<div class='rainbow' style='font-size:1.4rem;'>Work with people to make good things for people.</div>
-			<div class='rainbow' style='font-size:1.4rem;'>Care, question, do, be, and appreciate.</div>
--->
-		</div>
-		
 		<script src="scripts/three.min.js"></script>
 		<script src="scripts/threeoctree.js"></script>
 		<script src="scripts/stats.js"></script>
 		<script>
 
 			// Based on http://www.openprocessing.org/visuals/?visualID=6910
-			var Ship = (function() {
+			var Bird = (function() {
 				// Constants
 				var generateRandomInteger = function(min, max) {
 					return Math.round(Math.random() * (max - min)) + min;
@@ -28,7 +20,7 @@
 				var _maxSpeed = generateRandomInteger(4, 5);
 				var _maxSteerForce = generateRandomInteger(0.08, 0.25);
 				
-				var Ship = function(scene, octree, color) {
+				var Bird = function(scene, octree, color) {
 					this.chassisColor = color;
 					this.ribbonColor = color;
 					this.initBehavior(scene);
@@ -37,22 +29,22 @@
 					this.octree = octree;
 					this.octree.add(this.chassisObject3D);
 				}
-				Ship._neighborhoodRadius = 100;
-				Ship.ribbonTimeDelta = 40;
-				Ship.ribbonWidth = 0.5;
-				Ship.ribbonFadePerStep = 0.5;
-				Ship.ribbonSegmentCount = 5;
+				Bird._neighborhoodRadius = 100;
+				Bird.ribbonTimeDelta = 40;
+				Bird.ribbonWidth = 0.5;
+				Bird.ribbonFadePerStep = 0.5;
+				Bird.ribbonSegmentCount = 5;
 				
-				Ship.prototype.setPosition = function(position) {
+				Bird.prototype.setPosition = function(position) {
 					this.position.copy(position);
 				}
 				
 				// Behavior
-				Ship.prototype.initBehavior = function(scene) {
+				Bird.prototype.initBehavior = function(scene) {
 					this.position = new THREE.Vector3();
 					this.velocity = new THREE.Vector3();
 				}
-				Ship.prototype.run = function ( ships ) {
+				Bird.prototype.run = function ( birds ) {
 					// Gravitate to center
 					var vector = new THREE.Vector3();
 					var _acceleration = new THREE.Vector3();
@@ -63,10 +55,10 @@
 					
 					// Flock
 					if ( Math.random() > 0.5 ) {
-						var neighbors = this.octree.search(this.position, Ship._neighborhoodRadius, true);
-						_acceleration.add( this.alignment( ships, neighbors ) );
-						_acceleration.add( this.cohesion( ships, neighbors ) );
-						_acceleration.add( this.separation( ships, neighbors ) );
+						var neighbors = this.octree.search(this.position, Bird._neighborhoodRadius, true);
+						_acceleration.add( this.alignment( birds, neighbors ) );
+						_acceleration.add( this.cohesion( birds, neighbors ) );
+						_acceleration.add( this.separation( birds, neighbors ) );
 					}
 					
 					// Move
@@ -81,16 +73,16 @@
 					this.updateChassis(this);
 					this.updateRibbon(this);
 				}
-				Ship.prototype.alignment = function ( ships, neighbors ) {
-					var ship, velSum = new THREE.Vector3(),
+				Bird.prototype.alignment = function ( birds, neighbors ) {
+					var bird, velSum = new THREE.Vector3(),
 					self = this,
 					count = 0;
 					neighbors.forEach(function(neighbor) {
-						ship = neighbor.object.ship;
+						bird = neighbor.object.bird;
 						if ( Math.random() > 0.6 ) return;
-						distance = ship.position.distanceTo( self.position );
-						if ( distance > 0 && distance <= Ship._neighborhoodRadius ) {
-							velSum.add( ship.velocity );
+						distance = bird.position.distanceTo( self.position );
+						if ( distance > 0 && distance <= Bird._neighborhoodRadius ) {
+							velSum.add( bird.velocity );
 							count++;
 						}
 					});
@@ -103,18 +95,18 @@
 					}
 					return velSum;
 				}
-				Ship.prototype.cohesion = function ( ships, neighbors ) {
-					var ship, distance,
+				Bird.prototype.cohesion = function ( birds, neighbors ) {
+					var bird, distance,
 					self = this,
 					posSum = new THREE.Vector3(),
 					steer = new THREE.Vector3(),
 					count = 0;
 					neighbors.forEach(function(neighbor) {
-						ship = neighbor.object.ship;
+						bird = neighbor.object.bird;
 						if ( Math.random() > 0.6 ) return;
-						distance = ship.position.distanceTo( self.position );
-						if ( distance > 0 && distance <= Ship._neighborhoodRadius ) {
-							posSum.add( ship.position );
+						distance = bird.position.distanceTo( self.position );
+						if ( distance > 0 && distance <= Bird._neighborhoodRadius ) {
+							posSum.add( bird.position );
 							count++;
 						}
 					});
@@ -128,17 +120,17 @@
 					}
 					return steer;
 				}
-				Ship.prototype.separation = function ( ships, neighbors ) {
-					var ship, distance,
+				Bird.prototype.separation = function ( birds, neighbors ) {
+					var bird, distance,
 					self = this,
 					posSum = new THREE.Vector3(),
 					repulse = new THREE.Vector3();
 					neighbors.forEach(function(neighbor) {
-						ship = neighbor.object.ship;
+						bird = neighbor.object.bird;
 						if ( Math.random() > 0.6 ) return;
-						distance = ship.position.distanceTo( self.position );
-						if ( distance > 0 && distance <= Ship._neighborhoodRadius ) {
-							repulse.subVectors( self.position, ship.position );
+						distance = bird.position.distanceTo( self.position );
+						if ( distance > 0 && distance <= Bird._neighborhoodRadius ) {
+							repulse.subVectors( self.position, bird.position );
 							repulse.normalize();
 							repulse.divideScalar( distance );
 							posSum.add( repulse );
@@ -148,7 +140,7 @@
 				}
 				
 				// Rendering
-				Ship.prototype.initChassis = function(scene) {
+				Bird.prototype.initChassis = function(scene) {
 					this.phase = Math.floor( Math.random() * 62.83 );
 					
 					var chassisGeometry = new THREE.Geometry();
@@ -169,27 +161,27 @@
 					chassisGeometry.computeFaceNormals();
 					
 					this.chassisObject3D = new THREE.Mesh(chassisGeometry, new THREE.MeshLambertMaterial( { color:this.chassisColor, side: THREE.DoubleSide, wireframe:false } ));
-					this.chassisObject3D.ship = this;
+					this.chassisObject3D.bird = this;
 					scene.add(this.chassisObject3D);
 				}
-				Ship.prototype.updateChassis = function(ship) {
+				Bird.prototype.updateChassis = function(bird) {
 					// Transform
-					this.chassisObject3D.position.copy( ship.position );
-					this.chassisObject3D.rotation.y = Math.atan2( - ship.velocity.z, ship.velocity.x );
-					this.chassisObject3D.rotation.z = Math.asin( ship.velocity.y / ship.velocity.length() );
+					this.chassisObject3D.position.copy( bird.position );
+					this.chassisObject3D.rotation.y = Math.atan2( - bird.velocity.z, bird.velocity.x );
+					this.chassisObject3D.rotation.z = Math.asin( bird.velocity.y / bird.velocity.length() );
 					
 					// Wings
 					this.phase = ( this.phase + ( Math.max( 0, this.chassisObject3D.rotation.z ) + 0.1 )  ) % 62.83;
 					this.chassisObject3D.geometry.vertices[ 5 ].y = this.chassisObject3D.geometry.vertices[ 4 ].y = Math.sin( this.phase ) * 5;
 					this.chassisObject3D.geometry.verticesNeedUpdate = true;
 				}
-				Ship.prototype.initRibbon = function(scene) {
+				Bird.prototype.initRibbon = function(scene) {
 					this.ribbonSegments = [];
 					this.ribbonIndex = 0;
 					this.lastRibbonIndexIncrementTime = new Date().getTime();
 					this.lastPosition = new THREE.Vector3(0,0,0);
 					this.lastRotation = new THREE.Vector3(0,0,0);
-					for(var i = 0; i < Ship.ribbonSegmentCount; i++) {
+					for(var i = 0; i < Bird.ribbonSegmentCount; i++) {
 						var geometry = new THREE.Geometry();
 						geometry.vertices.push(new THREE.Vector3());
 						geometry.vertices.push(new THREE.Vector3());
@@ -208,15 +200,15 @@
 						this.ribbonSegments.push(segment);
 					}
 				}
-				Ship.prototype.updateRibbon = function(ship) {
+				Bird.prototype.updateRibbon = function(bird) {
 					var currentSegment = this.ribbonSegments[this.ribbonIndex];
 					var previousSegment = this.ribbonSegments[(this.ribbonIndex == 0) ? this.ribbonSegments.length - 1 : this.ribbonIndex - 1];
 					
 					var newPosition = this.chassisObject3D.position;
 					var newRotation = this.chassisObject3D.rotation;
 					var segmentVector = newPosition.clone().sub(this.lastPosition);
-					var offset = ship.velocity.clone().cross(newRotation).normalize().multiplyScalar(Ship.ribbonWidth);
-					// var offset = new THREE.Vector3(newRotation.x, newRotation.y, newRotation.z).normalize().multiplyScalar(Ship.ribbonWidth);
+					var offset = bird.velocity.clone().cross(newRotation).normalize().multiplyScalar(Bird.ribbonWidth);
+					// var offset = new THREE.Vector3(newRotation.x, newRotation.y, newRotation.z).normalize().multiplyScalar(Bird.ribbonWidth);
 					
 					var geometry = currentSegment.mesh.geometry;
 					geometry.vertices[0] = newPosition.clone().add(offset);
@@ -232,16 +224,16 @@
 					currentSegment.mesh.material.opacity = 0.8;
 					
 					var now = new Date().getTime();
-					if (now - this.lastRibbonIndexIncrementTime > Ship.ribbonTimeDelta) {
-						var ship = this;
+					if (now - this.lastRibbonIndexIncrementTime > Bird.ribbonTimeDelta) {
+						var bird = this;
 						this.ribbonSegments.forEach(function(segment) {
-							segment.mesh.material.opacity *= Ship.ribbonFadePerStep;
+							segment.mesh.material.opacity *= Bird.ribbonFadePerStep;
 						});
 						this.ribbonIndex = (this.ribbonIndex == this.ribbonSegments.length - 1) ? 0 : this.ribbonIndex + 1;
 						this.lastRibbonIndexIncrementTime = now;
 					}
 				}
-				Ship.getRandomColor = (function() {
+				Bird.getRandomColor = (function() {
 					var colors = [
 						0xFDF004,
 						0x49C411,
@@ -266,7 +258,7 @@
 					}
 				}());
 				
-				return Ship;
+				return Bird;
 			})();
 		</script>
 
@@ -277,7 +269,7 @@
 			SCREEN_HEIGHT_HALF = SCREEN_HEIGHT / 2;
 			
 			var camera, scene, renderer;
-			var ships;
+			var birds;
 			var stats;
 			var octree
 			init();
@@ -314,7 +306,7 @@
 						ring.rotation[options.rotation[0]] = options.rotation[1];
 						scene.add( ring );
 					}
-					var randomColor = Ship.getRandomColor();
+					var randomColor = Bird.getRandomColor();
 					addRing({ color:randomColor, top:0, height:5, rotation:['x', 0] });
 					// addRing({ color:randomColor, top:0, height:5, rotation:['y', Math.PI / 2] });
 					// addRing({ color:randomColor, top:0, height:5, rotation:['z', Math.PI / 2] });
@@ -322,19 +314,19 @@
 				generateRings();
 				
 				octree = new THREE.Octree();
-				var shipCount = 100;
-				ships = [];
-				var ship;
+				var birdCount = 100;
+				birds = [];
+				var bird;
 				var instantiationRange = 2000;
-				for ( var i = 0; i < shipCount; i ++ ) {
-					ship = ships[ i ] = new Ship(scene, octree, Ship.getRandomColor());
-					ship.setPosition(new THREE.Vector3(
+				for ( var i = 0; i < birdCount; i ++ ) {
+					bird = birds[ i ] = new Bird(scene, octree, Bird.getRandomColor());
+					bird.setPosition(new THREE.Vector3(
 						Math.random() * instantiationRange - instantiationRange / 2,
 						Math.random() * instantiationRange - instantiationRange / 2,
 						Math.random() * instantiationRange - instantiationRange / 2
 					));
-					ship.velocity.y = Math.random() * 2 - 1;
-					ship.velocity.z = Math.random() * 2 - 1;
+					bird.velocity.y = Math.random() * 2 - 1;
+					bird.velocity.z = Math.random() * 2 - 1;
 				}
 				
 				renderer = new THREE.WebGLRenderer();
@@ -365,11 +357,11 @@
 			}
 			
 			function render() {
-				ships.forEach(function(ship) { ship.run(ships); });
+				birds.forEach(function(bird) { bird.run(birds); });
 				
-				// var direction = ships[0].velocity.clone().normalize();
+				// var direction = birds[0].velocity.clone().normalize();
 				// var cameraOffset = new THREE.Vector3(10,0,10);
-				// var cameraGoal = ships[0].position.clone().sub(direction.clone().multiplyScalar(100)).add(cameraOffset);
+				// var cameraGoal = birds[0].position.clone().sub(direction.clone().multiplyScalar(100)).add(cameraOffset);
 				// var cameraAcceleration = cameraGoal.sub(camera.position).multiplyScalar( 0.8 );
 				// camera.position.add(cameraAcceleration);
 				// camera.rotation.copy(cameraAcceleration.normalize());
@@ -377,11 +369,11 @@
 				// var currentCameraRotationMatrix.extractRotation(camera.matrix);
 				// camera.this.quaternion.setFromRotationMatrix( m1 );
 				// 		
-				camera.lookAt(ships[0].position.clone());
+				camera.lookAt(birds[0].position.clone());
 				
-				// camera.position.x = ships[0].position.x;
-				// camera.position.y = ships[0].position.y;
-				// camera.position.z = ships[0].position.z + 250;
+				// camera.position.x = birds[0].position.x;
+				// camera.position.y = birds[0].position.y;
+				// camera.position.z = birds[0].position.z + 250;
 				
 				renderer.render( scene, camera );
 				octree.update();
@@ -397,7 +389,7 @@
 					for(var i = 0; i < chars.length; i++) {
 						var span = document.createElement('span');
 						span.innerHTML = chars[i] + '&nbsp;';
-						span.style.color = '#' + Ship.getRandomColor().toString(16);
+						span.style.color = '#' + Bird.getRandomColor().toString(16);
 						element.appendChild(span);
 					}
 				});
