@@ -7,10 +7,8 @@
 		<div id="container"></div>
 		<script src="scripts/three.min.js"></script>
 		<script src="scripts/threeoctree.js"></script>
-		<script src="scripts/stats.js"></script>
 		<script>
 
-			// Based on http://www.openprocessing.org/visuals/?visualID=6910
 			var Bird = (function() {
 				// Constants
 				var generateRandomInteger = function(min, max) {
@@ -270,7 +268,6 @@
 			
 			var camera, scene, renderer;
 			var birds;
-			var stats;
 			var octree
 			init();
 			animate();
@@ -335,12 +332,6 @@
 				renderer.setSize( SCREEN_WIDTH, SCREEN_HEIGHT );
 				document.body.appendChild( renderer.domElement );
 				
-				// stats = new Stats();
-				// stats.domElement.style.position = 'absolute';
-				// stats.domElement.style.left = '0px';
-				// stats.domElement.style.top = '0px';
-				// document.getElementById( 'container' ).appendChild(stats.domElement);
-				
 				window.addEventListener( 'resize', onWindowResize, false );
 			}
 
@@ -353,48 +344,14 @@
 			function animate() {
 				requestAnimationFrame( animate );
 				render();
-				// stats.update();
 			}
 			
 			function render() {
 				birds.forEach(function(bird) { bird.run(birds); });
-				
-				// var direction = birds[0].velocity.clone().normalize();
-				// var cameraOffset = new THREE.Vector3(10,0,10);
-				// var cameraGoal = birds[0].position.clone().sub(direction.clone().multiplyScalar(100)).add(cameraOffset);
-				// var cameraAcceleration = cameraGoal.sub(camera.position).multiplyScalar( 0.8 );
-				// camera.position.add(cameraAcceleration);
-				// camera.rotation.copy(cameraAcceleration.normalize());
-				// var newCameraRotationMatrix = new THREE.Matrix4().lookAt( camera.position, cameraAcceleration, camera.up );
-				// var currentCameraRotationMatrix.extractRotation(camera.matrix);
-				// camera.this.quaternion.setFromRotationMatrix( m1 );
-				// 		
 				camera.lookAt(birds[0].position.clone());
-				
-				// camera.position.x = birds[0].position.x;
-				// camera.position.y = birds[0].position.y;
-				// camera.position.z = birds[0].position.z + 250;
-				
 				renderer.render( scene, camera );
 				octree.update();
 				octree.rebuild(true);
 			}
-			
-			function rainbowify(className) {
-				var elements = document.getElementsByClassName('rainbow');
-				Array.prototype.forEach.call(elements, function(element) {
-					var text = element.innerHTML;
-					element.innerHTML = '';
-					var chars = text.split(' ');
-					for(var i = 0; i < chars.length; i++) {
-						var span = document.createElement('span');
-						span.innerHTML = chars[i] + '&nbsp;';
-						span.style.color = '#' + Bird.getRandomColor().toString(16);
-						element.appendChild(span);
-					}
-				});
-			}
-			rainbowify('rainbow');
-			
 		</script><canvas width="1440" height="755" style="width: 1440px; height: 755px;"></canvas>
 </body></html>
