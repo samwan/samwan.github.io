@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
 		<title>:-P</title>
-		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
 	</head>
-	<body style="margin:0px; padding:0px; font-size:16px; font-family:courier-new garamond helveticaneue-light; line-height:2rem;">
+	<body style="margin:0px; padding:0px; font-size:16px; font-family:courier-new garamond helveticaneue-light; line-height:2rem; position:relative;">
 		<div id="container"></div>
 		<script src="scripts/three.min.js"></script>
 		<script src="scripts/threeoctree.js"></script>
@@ -14,11 +14,12 @@
 				var generateRandomInteger = function(min, max) {
 					return Math.round(Math.random() * (max - min)) + min;
 				}
-				var _neighborhoodRadius = generateRandomInteger(90, 100);
+				var _neighborhoodRadius = generateRandomInteger(60, 100);
 				var _maxSpeed = generateRandomInteger(4, 5);
-				var _maxSteerForce = generateRandomInteger(0.08, 0.25);
+				var _maxSteerForce = generateRandomInteger(0.08, 0.45);
 				
-				var Bird = function(scene, octree, color) {
+				var Bird = function(scene, octree, color, name) {
+					this.name = name;
 					this.chassisColor = color;
 					this.ribbonColor = color;
 					this.initBehavior(scene);
@@ -26,38 +27,52 @@
 					this.initRibbon(scene);
 					this.octree = octree;
 					this.octree.add(this.chassisObject3D);
+					this.isFlocking = true;
+					this.toggleBehavior();
 				}
 				Bird._neighborhoodRadius = 100;
-				Bird.ribbonTimeDelta = 40;
-				Bird.ribbonWidth = 0.5;
-				Bird.ribbonFadePerStep = 0.5;
+				Bird.ribbonTimeDelta = 300;
+				Bird.ribbonWidth = 0.8;
+				Bird.ribbonFadePerStep = 0.7;
 				Bird.ribbonSegmentCount = 5;
 				
 				Bird.prototype.setPosition = function(position) {
 					this.position.copy(position);
 				}
+				Bird.prototype.toggleBehavior = function() {
+					var flockingDuration = Math.round(Math.random() * 10000 + 4000);
+					var indieDuration = Math.round(Math.random() * 1000);
+					var delay = this.isFlocking ? flockingDuration : indieDuration;
+					setTimeout(() => {
+						this.isFlocking = !this.isFlocking;
+						this.toggleBehavior();
+					}, delay);
+				}
 				
 				// Behavior
 				Bird.prototype.initBehavior = function(scene) {
 					this.position = new THREE.Vector3();
-					this.velocity = new THREE.Vector3();
+					this.velocity = new THREE.Vector3(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1).normalize().multiplyScalar(20);
 				}
 				Bird.prototype.run = function ( birds ) {
-					// Gravitate to center
 					var vector = new THREE.Vector3();
 					var _acceleration = new THREE.Vector3();
-					if ( Math.random() > 0.5 ) {
-						vector.copy(this.position).normalize().multiplyScalar( - _maxSteerForce * 0.9);
-						_acceleration.add( vector );
-					}
 					
-					// Flock
-					if ( Math.random() > 0.5 ) {
-						var neighbors = this.octree.search(this.position, Bird._neighborhoodRadius, true);
-						_acceleration.add( this.alignment( birds, neighbors ) );
-						_acceleration.add( this.cohesion( birds, neighbors ) );
-						_acceleration.add( this.separation( birds, neighbors ) );
-					}
+					if (this.isFlocking) {
+						// Gravitate to center
+						if ( Math.random() > 0.5 ) {
+							vector.copy(this.position).normalize().multiplyScalar( - _maxSteerForce * 0.84);
+							_acceleration.add( vector );
+						}
+					
+						// Flock
+						if ( Math.random() > 0.5 ) {
+							var neighbors = this.octree.search(this.position, Bird._neighborhoodRadius, true);
+							_acceleration.add( this.alignment( birds, neighbors ) );
+							_acceleration.add( this.cohesion( birds, neighbors ) );
+							_acceleration.add( this.separation( birds, neighbors ) );
+						}
+					};
 					
 					// Move
 					this.velocity.add( _acceleration );
@@ -142,15 +157,18 @@
 					this.phase = Math.floor( Math.random() * 62.83 );
 					
 					var chassisGeometry = new THREE.Geometry();
-					chassisGeometry.vertices.push( new THREE.Vector3(   5,   0,   0 ));
-					chassisGeometry.vertices.push( new THREE.Vector3( - 5, - 2,   1 ));
-					chassisGeometry.vertices.push( new THREE.Vector3( - 5,   0,   0 ));
+					chassisGeometry.vertices.push( new THREE.Vector3(	 5,	 0,	 0 ));
+					chassisGeometry.vertices.push( new THREE.Vector3( - 5, - 2,	 1 ));
+					chassisGeometry.vertices.push( new THREE.Vector3( - 5,	 0,	 0 ));
 					chassisGeometry.vertices.push( new THREE.Vector3( - 5, - 2, - 1 ));
 					
-					chassisGeometry.vertices.push( new THREE.Vector3(   0,   2, - 6 ));
-					chassisGeometry.vertices.push( new THREE.Vector3(   0,   2,   6 ));
-					chassisGeometry.vertices.push( new THREE.Vector3(   2,   0,   0 ));
-					chassisGeometry.vertices.push( new THREE.Vector3( - 3,   0,   0 ));
+					chassisGeometry.vertices.push( new THREE.Vector3(	 0,	 2, - 6 ));
+					chassisGeometry.vertices.push( new THREE.Vector3(	 0,	 2,	 6 ));
+					chassisGeometry.vertices.push( new THREE.Vector3(	 2,	 0,	 0 ));
+					chassisGeometry.vertices.push( new THREE.Vector3( - 3,	 0,	 0 ));
+					
+					var offset = new THREE.Vector3(3,0,0);
+					chassisGeometry.vertices.forEach(v => v.add(offset));
 					
 					chassisGeometry.faces.push( new THREE.Face3( 0, 2, 1 ));
 					chassisGeometry.faces.push( new THREE.Face3( 0, 2, 3 ));
@@ -158,7 +176,7 @@
 					chassisGeometry.faces.push( new THREE.Face3( 5, 6, 7 ));
 					chassisGeometry.computeFaceNormals();
 					
-					this.chassisObject3D = new THREE.Mesh(chassisGeometry, new THREE.MeshLambertMaterial( { color:this.chassisColor, side: THREE.DoubleSide, wireframe:false } ));
+					this.chassisObject3D = new THREE.Mesh(chassisGeometry, new THREE.MeshLambertMaterial( { color:this.chassisColor, side: THREE.DoubleSide, wireframe:false, fog:true } ));
 					this.chassisObject3D.bird = this;
 					scene.add(this.chassisObject3D);
 				}
@@ -169,11 +187,13 @@
 					this.chassisObject3D.rotation.z = Math.asin( bird.velocity.y / bird.velocity.length() );
 					
 					// Wings
-					this.phase = ( this.phase + ( Math.max( 0, this.chassisObject3D.rotation.z ) + 0.1 )  ) % 62.83;
+					this.phase = ( this.phase + ( Math.max( 0, this.chassisObject3D.rotation.z ) + 0.1 )	) % 62.83;
 					this.chassisObject3D.geometry.vertices[ 5 ].y = this.chassisObject3D.geometry.vertices[ 4 ].y = Math.sin( this.phase ) * 5;
 					this.chassisObject3D.geometry.verticesNeedUpdate = true;
 				}
 				Bird.prototype.initRibbon = function(scene) {
+					// Consider https://github.com/spite/THREE.MeshLine
+					// https://www.clicktorelease.com/code/THREE.MeshLine/demo/birds.html
 					this.ribbonSegments = [];
 					this.ribbonIndex = 0;
 					this.lastRibbonIndexIncrementTime = new Date().getTime();
@@ -263,21 +283,30 @@
 		<script>
 			var SCREEN_WIDTH = window.innerWidth,
 			SCREEN_HEIGHT = window.innerHeight,
-			SCREEN_WIDTH_HALF = SCREEN_WIDTH  / 2,
+			SCREEN_WIDTH_HALF = SCREEN_WIDTH	/ 2,
 			SCREEN_HEIGHT_HALF = SCREEN_HEIGHT / 2;
 			
 			var camera, scene, renderer;
+			var cameraRx, cameraRy;
+			var isMouseDown = false;
 			var birds;
-			var octree
+			var octree;
+			var font;
 			init();
 			animate();
 			
 			function init() {
+				// Camera
 				camera = new THREE.PerspectiveCamera( 70, SCREEN_WIDTH / SCREEN_HEIGHT, 1, 10000 );
-				camera.position.z = 200;
+				camera.rotation.order = 'YXZ';
+				camera.position.z = 800;
 				scene = new THREE.Scene();
-				scene.fog = new THREE.FogExp2( 0x000000, 0.0015 );
 				
+				// Fog
+				// scene.fog = new THREE.FogExp2( 0x000000, 0.0015 );
+				scene.fog = new THREE.FogExp2( 0xffffff, 0.0002 );
+				
+				// Lighting
 				hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.3 );
 				hemiLight.position.set( 0, 1000, 0 );
 				scene.add( hemiLight );
@@ -285,38 +314,34 @@
 				dirLight = new THREE.DirectionalLight( 0xffffff, 1 );
 				dirLight.position.set( 0, 1, 0).normalize();
 				scene.add( dirLight );
-				// 
-				var geometry = new THREE.SphereGeometry( 2000, 16, 16 );
-				var material = new THREE.MeshBasicMaterial( {color: 0xffffff, side:THREE.BackSide, wireframe:false, fog:false } );
-				var sphere = new THREE.Mesh( geometry, material );
-				scene.add( sphere );
-
-
-				var generateRings = function() {
-					var addRing = function(options) {
-						// radiusTop, radiusBottom, height, radiusSegments, heightSegments, openEnded, thetaStart, thetaLength
-						var ringRadius = 1800;
-						var geometry = new THREE.CylinderGeometry( ringRadius, ringRadius, options.height, 20, 1, true );
-						var material = new THREE.MeshBasicMaterial( {color: options.color, side:THREE.BackSide, wireframe:false, fog:false } );
-						var ring = new THREE.Mesh( geometry, material );
-						ring.position.copy(new THREE.Vector3(0, options.top));
-						ring.rotation[options.rotation[0]] = options.rotation[1];
-						scene.add( ring );
-					}
-					var randomColor = Bird.getRandomColor();
-					addRing({ color:randomColor, top:0, height:5, rotation:['x', 0] });
-					// addRing({ color:randomColor, top:0, height:5, rotation:['y', Math.PI / 2] });
-					// addRing({ color:randomColor, top:0, height:5, rotation:['z', Math.PI / 2] });
-				}
-				generateRings();
 				
+				// Something to give positional context
+				var bigsphere = new THREE.SphereGeometry(7000, 5,5);
+				// bigsphere.rotateX(Math.PI/2);
+				bigsphere.vertices.forEach(v => {
+					var geometry = new THREE.SphereGeometry( 80, 16,16 );
+					// var geometry = new THREE.IcosahedronGeometry(100, 0);
+					var material = new THREE.MeshBasicMaterial( {color: Bird.getRandomColor(), side:THREE.FrontSide, wireframe:false, fog:false } );
+					var star = new THREE.Mesh( geometry, material );
+					star.position.copy(v);
+					scene.add(star);
+				});
+				
+				// Central star
+				// var geometry = new THREE.SphereGeometry( 60, 12, 12);
+				var geometry = new THREE.IcosahedronGeometry(40, 0);
+				var material = new THREE.MeshNormalMaterial( {color: Bird.getRandomColor(), side:THREE.DoubleSide, wireframe:false, wireframeLinewidth:2, fog:true } );
+				var star = new THREE.Mesh( geometry, material );
+				scene.add(star);
+				
+				// Generate birds
 				octree = new THREE.Octree();
 				var birdCount = 100;
 				birds = [];
 				var bird;
 				var instantiationRange = 2000;
 				for ( var i = 0; i < birdCount; i ++ ) {
-					bird = birds[ i ] = new Bird(scene, octree, Bird.getRandomColor());
+					bird = birds[ i ] = new Bird(scene, octree, Bird.getRandomColor(), 'bird_' + i);
 					bird.setPosition(new THREE.Vector3(
 						Math.random() * instantiationRange - instantiationRange / 2,
 						Math.random() * instantiationRange - instantiationRange / 2,
@@ -326,32 +351,124 @@
 					bird.velocity.z = Math.random() * 2 - 1;
 				}
 				
+				// Renderer
 				renderer = new THREE.WebGLRenderer();
 				renderer.setClearColor( 0xffffff );
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( SCREEN_WIDTH, SCREEN_HEIGHT );
 				document.body.appendChild( renderer.domElement );
-				
-				window.addEventListener( 'resize', onWindowResize, false );
+					
+				// Interaction
+				window.addEventListener( 'resize', function() {
+					camera.aspect = window.innerWidth / window.innerHeight;
+					camera.updateProjectionMatrix();
+					renderer.setSize( window.innerWidth, window.innerHeight );
+				});
+				window.addEventListener('mousemove', function(e) {
+					cameraRx = (e.clientX - window.innerWidth / 2) / (window.innerWidth / 2);
+					cameraRy = (e.clientY - window.innerHeight / 2) / (window.innerHeight / 2);
+				});
+				window.addEventListener('mousedown', function() {
+					isMouseDown = true; 
+				});
+				window.addEventListener('mouseup', function() {
+					isMouseDown = false;
+				});
+				window.addEventListener('touchstart', function(e) {
+					isMouseDown = !isMouseDown;
+				});
 			}
+			
+			// https://stackoverflow.com/questions/27409074/converting-3d-position-to-2d-screen-position-r69
+			function toScreenPosition(obj, camera) {
+					var vector = new THREE.Vector3();
 
-			function onWindowResize() {
-				camera.aspect = window.innerWidth / window.innerHeight;
-				camera.updateProjectionMatrix();
-				renderer.setSize( window.innerWidth, window.innerHeight );
-			}
+			    var widthHalf = 0.5*renderer.context.canvas.width;
+			    var heightHalf = 0.5*renderer.context.canvas.height;
 
+			    obj.updateMatrixWorld();
+			    vector.setFromMatrixPosition(obj.matrixWorld);
+			    vector.project(camera);
+
+			    vector.x = ( vector.x * widthHalf ) + widthHalf;
+			    vector.y = - ( vector.y * heightHalf ) + heightHalf;
+
+			    return { 
+			        x: Math.round(vector.x),
+			        y: Math.round(vector.y)
+			    };
+
+			};
+			
 			function animate() {
 				requestAnimationFrame( animate );
 				render();
 			}
 			
+			function followBird() {
+				var followOffset = new THREE.Vector3(2,2,2);
+				var bird = birds[0];
+				var newRotation = bird.chassisObject3D.rotation;
+				var offset = bird.velocity.clone().sub(followOffset).normalize().multiplyScalar(24);
+				var delta = bird.position.clone().sub(offset).sub(camera.position);
+				delta.multiplyScalar(0.08); // exponential
+				// delta.normalize().multiplyScalar(10); // linear
+				camera.position.add(delta);
+				interpolateCamera(0.3);
+			}
+			
+			function interpolateCamera(scalar) {
+				var startRotation = new THREE.Euler().copy( camera.rotation );
+				camera.lookAt( birds[0].position ); // final rotation (with lookAt)
+				var endRotation = new THREE.Euler().copy( camera.rotation );
+				var delta = endRotation.toVector3().sub(startRotation.toVector3()).multiplyScalar(scalar);
+				delta.add(startRotation.toVector3());
+				startRotation.setFromVector3(delta);
+
+				// revert to original rotation
+				camera.rotation.copy( startRotation );
+			}
+			function zoomOut() {
+				var zoomOutCameraPosition = new THREE.Vector3(0,300,800);
+				var delta = zoomOutCameraPosition.clone().sub(camera.position);
+				delta.multiplyScalar(0.01); // exponential
+				// delta.normalize().multiplyScalar(1); // linear
+				camera.position.add(delta);
+				
+				interpolateCamera(0.02);
+			}
 			function render() {
+				// Update bird position
 				birds.forEach(function(bird) { bird.run(birds); });
-				camera.lookAt(birds[0].position.clone());
-				renderer.render( scene, camera );
 				octree.update();
 				octree.rebuild(true);
+				
+				// Move camera
+				if (isMouseDown) followBird();
+				else zoomOut();
+				
+				// Rotate camera
+				// camera.rotation.y = camera.rotation.y + cameraRx * 90 * Math.PI/180;
+				// camera.rotation.x = camera.rotation.x + cameraRy * 90 * Math.PI/180;
+				
+				// Render HUD
+				var distance = birds[0].position.distanceTo(camera.position);
+				var scaleY = Math.tan(THREE.Math.degToRad( camera.fov )  * Math.PI/ 180 * 0.5) * distance * 2
+				var scaleX = scaleY * camera.aspect;
+				var originalSize = 400;
+				var size = originalSize / scaleX;
+				
+				// var p = toScreenPosition(birds[0].chassisObject3D, camera);
+				// var rect = document.getElementById('rect');
+				// rect.style.left = (p.x - size/2) + 'px';
+				// rect.style.top = (p.y - size/2) + 'px';
+				// rect.style.width = size + 'px';
+				// rect.style.height = size + 'px';
+				// rect.style.borderColor = '#' + birds[0].chassisColor.toString(16);
+				// rect.style.borderRadius = size + 'px';
+				
+				renderer.render( scene, camera );
 			}
-		</script><canvas width="1440" height="755" style="width: 1440px; height: 755px;"></canvas>
+		</script>
+		<!-- <div id='rect' style='border:2px solid red; position:absolute; width:10px; height:10px; z-index:10'></div> -->
 </body></html>
