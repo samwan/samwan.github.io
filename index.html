@@ -288,7 +288,7 @@
 			
 			var camera, scene, renderer;
 			var cameraRx, cameraRy;
-			var isMouseDown = false;
+			var cameraMode = false;
 			var birds;
 			var octree;
 			var font;
@@ -369,15 +369,24 @@
 					cameraRy = (e.clientY - window.innerHeight / 2) / (window.innerHeight / 2);
 				});
 				window.addEventListener('mousedown', function() {
-					isMouseDown = true; 
+					cameraMode = 'follow'; 
 				});
 				window.addEventListener('mouseup', function() {
-					isMouseDown = false;
+					cameraMode = 'zoomout';
 				});
 				window.addEventListener('touchstart', function(e) {
-					isMouseDown = !isMouseDown;
+					cameraMode = cameraMode == 'follow' ? 'zoomout' : 'follow';
 				});
+				
+				var toggleCameraMode = function() {
+					console.log('toggleCameraMode');
+					cameraMode = cameraMode == 'follow' ? 'zoomout' : 'follow';
+					setTimeout(() => toggleCameraMode(), Math.round(Math.random() * 10000) + 10000);
+				}
+				toggleCameraMode();
 			}
+			
+			
 			
 			// https://stackoverflow.com/questions/27409074/converting-3d-position-to-2d-screen-position-r69
 			function toScreenPosition(obj, camera) {
@@ -411,7 +420,7 @@
 				var newRotation = bird.chassisObject3D.rotation;
 				var offset = bird.velocity.clone().sub(followOffset).normalize().multiplyScalar(24);
 				var delta = bird.position.clone().sub(offset).sub(camera.position);
-				delta.multiplyScalar(0.08); // exponential
+				delta.multiplyScalar(0.01); // exponential
 				// delta.normalize().multiplyScalar(10); // linear
 				camera.position.add(delta);
 				interpolateCamera(0.3);
@@ -431,8 +440,8 @@
 			function zoomOut() {
 				var zoomOutCameraPosition = new THREE.Vector3(0,300,800);
 				var delta = zoomOutCameraPosition.clone().sub(camera.position);
-				delta.multiplyScalar(0.01); // exponential
-				// delta.normalize().multiplyScalar(1); // linear
+				// delta.multiplyScalar(0.01); // exponential
+				delta.normalize().multiplyScalar(1); // linear
 				camera.position.add(delta);
 				
 				interpolateCamera(0.02);
@@ -444,7 +453,7 @@
 				octree.rebuild(true);
 				
 				// Move camera
-				if (isMouseDown) followBird();
+				if (cameraMode == 'follow') followBird();
 				else zoomOut();
 				
 				// Rotate camera
