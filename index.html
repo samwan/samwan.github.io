@@ -14,9 +14,9 @@
 				var generateRandomInteger = function(min, max) {
 					return Math.round(Math.random() * (max - min)) + min;
 				}
-				var _neighborhoodRadius = generateRandomInteger(60, 100);
+				var _neighborhoodRadius = generateRandomInteger(40, 240);
 				var _maxSpeed = generateRandomInteger(4, 5);
-				var _maxSteerForce = generateRandomInteger(0.08, 0.45);
+				var _maxSteerForce = generateRandomInteger(0.1, 0.5);
 				
 				var Bird = function(scene, octree, color, name) {
 					this.name = name;
@@ -28,6 +28,7 @@
 					this.octree = octree;
 					this.octree.add(this.chassisObject3D);
 					this.isFlocking = true;
+					this.isHorizontal = Math.random() > 0.5;
 					this.toggleBehavior();
 				}
 				Bird._neighborhoodRadius = 100;
@@ -64,6 +65,18 @@
 							vector.copy(this.position).normalize().multiplyScalar( - _maxSteerForce * 0.84);
 							_acceleration.add( vector );
 						}
+						
+						// Gravity to milky way
+						// if ( Math.random() > 0.5 ) {
+						// 	var planePoint = vector.copy(this.position);
+						// 	if (this.isHorizontal) {
+						// 		planePoint.setY(0);
+						// 	} else {
+						// 		planePoint.setX(0);
+						// 	}
+						// 	var deltaToDisc = planePoint.sub(this.position);
+						// 	_acceleration.add(deltaToDisc.normalize().multiplyScalar(_maxSteerForce * 0.8));
+						// }
 					
 						// Flock
 						if ( Math.random() > 0.5 ) {
@@ -222,9 +235,9 @@
 					var currentSegment = this.ribbonSegments[this.ribbonIndex];
 					var previousSegment = this.ribbonSegments[(this.ribbonIndex == 0) ? this.ribbonSegments.length - 1 : this.ribbonIndex - 1];
 					
-					var newPosition = this.chassisObject3D.position;
+					var newPosition = this.chassisObject3D.position.clone();
 					var newRotation = this.chassisObject3D.rotation;
-					var segmentVector = newPosition.clone().sub(this.lastPosition);
+					newPosition.add(bird.velocity.clone().normalize().multiplyScalar(-2));
 					var offset = bird.velocity.clone().cross(newRotation).normalize().multiplyScalar(Bird.ribbonWidth);
 					// var offset = new THREE.Vector3(newRotation.x, newRotation.y, newRotation.z).normalize().multiplyScalar(Bird.ribbonWidth);
 					
@@ -289,6 +302,9 @@
 			var camera, scene, renderer;
 			var cameraRx, cameraRy;
 			var cameraMode = false;
+			var cameraVelocity = new THREE.Vector3();
+			var targetBirdIndex = 0;
+			
 			var birds;
 			var octree;
 			var font;
@@ -319,7 +335,7 @@
 				var bigsphere = new THREE.SphereGeometry(7000, 5,5);
 				// bigsphere.rotateX(Math.PI/2);
 				bigsphere.vertices.forEach(v => {
-					var geometry = new THREE.SphereGeometry( 80, 16,16 );
+					var geometry = new THREE.SphereGeometry( 80, 12,12 );
 					// var geometry = new THREE.IcosahedronGeometry(100, 0);
 					var material = new THREE.MeshBasicMaterial( {color: Bird.getRandomColor(), side:THREE.FrontSide, wireframe:false, fog:false } );
 					var star = new THREE.Mesh( geometry, material );
@@ -328,9 +344,9 @@
 				});
 				
 				// Central star
-				// var geometry = new THREE.SphereGeometry( 60, 12, 12);
-				var geometry = new THREE.IcosahedronGeometry(40, 0);
-				var material = new THREE.MeshNormalMaterial( {color: Bird.getRandomColor(), side:THREE.DoubleSide, wireframe:false, wireframeLinewidth:2, fog:true } );
+				var geometry = new THREE.SphereGeometry( 60, 32, 32);
+				// var geometry = new THREE.IcosahedronGeometry(40, 0);
+				var material = new THREE.MeshBasicMaterial( {color: 0xFFE001/*Bird.getRandomColor()*/, side:THREE.DoubleSide, wireframe:false, wireframeLinewidth:2, fog:true } );
 				var star = new THREE.Mesh( geometry, material );
 				scene.add(star);
 				
@@ -368,22 +384,19 @@
 					cameraRx = (e.clientX - window.innerWidth / 2) / (window.innerWidth / 2);
 					cameraRy = (e.clientY - window.innerHeight / 2) / (window.innerHeight / 2);
 				});
-				window.addEventListener('mousedown', function() {
-					cameraMode = 'follow'; 
-				});
-				window.addEventListener('mouseup', function() {
-					cameraMode = 'zoomout';
+				window.addEventListener('click', function() {
+					toggleCameraMode(true);
 				});
 				window.addEventListener('touchstart', function(e) {
-					cameraMode = cameraMode == 'follow' ? 'zoomout' : 'follow';
+					toggleCameraMode(true);
 				});
 				
-				var toggleCameraMode = function() {
-					console.log('toggleCameraMode');
-					cameraMode = cameraMode == 'follow' ? 'zoomout' : 'follow';
+				var toggleCameraMode = function(shouldFollow) {
+					cameraMode = (shouldFollow || cameraMode == 'zoomout') ? 'follow' : 'zoomout';
+					targetBirdIndex = Math.floor(Math.random() * (birds.length));
 					setTimeout(() => toggleCameraMode(), Math.round(Math.random() * 10000) + 10000);
 				}
-				toggleCameraMode();
+				toggleCameraMode(true);
 			}
 			
 			
@@ -414,21 +427,23 @@
 				render();
 			}
 			
-			function followBird() {
-				var followOffset = new THREE.Vector3(2,2,2);
-				var bird = birds[0];
+			function accelerateTowardsBird() {
+				var followOffset = new THREE.Vector3(30,40,30);
+				var bird = birds[targetBirdIndex];
 				var newRotation = bird.chassisObject3D.rotation;
 				var offset = bird.velocity.clone().sub(followOffset).normalize().multiplyScalar(24);
 				var delta = bird.position.clone().sub(offset).sub(camera.position);
-				delta.multiplyScalar(0.01); // exponential
-				// delta.normalize().multiplyScalar(10); // linear
-				camera.position.add(delta);
-				interpolateCamera(0.3);
+				return delta;
+			}
+			function accelerateTowardsBigPerspective() {
+				var zoomOutCameraPosition = new THREE.Vector3(0,800,1200);
+				var delta = zoomOutCameraPosition.clone().sub(camera.position);
+				return delta;
 			}
 			
 			function interpolateCamera(scalar) {
 				var startRotation = new THREE.Euler().copy( camera.rotation );
-				camera.lookAt( birds[0].position ); // final rotation (with lookAt)
+				camera.lookAt( birds[targetBirdIndex].position ); // final rotation (with lookAt)
 				var endRotation = new THREE.Euler().copy( camera.rotation );
 				var delta = endRotation.toVector3().sub(startRotation.toVector3()).multiplyScalar(scalar);
 				delta.add(startRotation.toVector3());
@@ -437,15 +452,6 @@
 				// revert to original rotation
 				camera.rotation.copy( startRotation );
 			}
-			function zoomOut() {
-				var zoomOutCameraPosition = new THREE.Vector3(0,300,800);
-				var delta = zoomOutCameraPosition.clone().sub(camera.position);
-				// delta.multiplyScalar(0.01); // exponential
-				delta.normalize().multiplyScalar(1); // linear
-				camera.position.add(delta);
-				
-				interpolateCamera(0.02);
-			}
 			function render() {
 				// Update bird position
 				birds.forEach(function(bird) { bird.run(birds); });
@@ -453,15 +459,27 @@
 				octree.rebuild(true);
 				
 				// Move camera
-				if (cameraMode == 'follow') followBird();
-				else zoomOut();
+				var maxSpeed = 12;
+				if (cameraMode == 'follow') {
+					var acceleration = accelerateTowardsBird().multiplyScalar(0.02);
+					cameraVelocity.add(acceleration);
+				} else {
+					var acceleration = accelerateTowardsBigPerspective().multiplyScalar(0.0001);
+					cameraVelocity.add(acceleration);
+				}
+				if (cameraVelocity.length() > maxSpeed) {
+					cameraVelocity.normalize().multiplyScalar(maxSpeed);
+				}
+				cameraVelocity.multiplyScalar(0.9); // friction
+				camera.position.add(cameraVelocity);
+				interpolateCamera(0.1);
 				
 				// Rotate camera
 				// camera.rotation.y = camera.rotation.y + cameraRx * 90 * Math.PI/180;
 				// camera.rotation.x = camera.rotation.x + cameraRy * 90 * Math.PI/180;
 				
 				// Render HUD
-				var distance = birds[0].position.distanceTo(camera.position);
+				var distance = birds[targetBirdIndex].position.distanceTo(camera.position);
 				var scaleY = Math.tan(THREE.Math.degToRad( camera.fov )  * Math.PI/ 180 * 0.5) * distance * 2
 				var scaleX = scaleY * camera.aspect;
 				var originalSize = 400;
