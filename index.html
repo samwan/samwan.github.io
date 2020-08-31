@@ -431,10 +431,10 @@
 					camera.updateProjectionMatrix();
 					renderer.setSize( window.innerWidth, window.innerHeight );
 				});
-				renderer.domElement.addEventListener('mousemove', function(e) {
-					cameraRx = (e.clientX - window.innerWidth / 2) / (window.innerWidth / 2);
-					cameraRy = (e.clientY - window.innerHeight / 2) / (window.innerHeight / 2);
-				});
+				// renderer.domElement.addEventListener('mousemove', function(e) {
+				// 	cameraRx = (e.clientX - window.innerWidth / 2) / (window.innerWidth / 2);
+				// 	cameraRy = (e.clientY - window.innerHeight / 2) / (window.innerHeight / 2);
+				// });
 				// document.getElementById('add_bird_button').addEventListener('click', function(e) {
 				// 	for(var i = 0; i < 10; i++) {
 				// 		addBirds(1);
@@ -448,9 +448,9 @@
 				// 	flockingMode = !flockingMode;
 				// 	toggleFlocking(flockingMode);
 				// });
-				window.addEventListener('touchstart', function(e) {
-					toggleCameraMode();
-				});
+				// window.addEventListener('touchstart', function(e) {
+				// 	toggleCameraMode();
+				// });
 				
 				var toggleCameraMode = function() {
 					cameraMode = (cameraMode == 'zoomout') ? 'follow' : 'zoomout';
