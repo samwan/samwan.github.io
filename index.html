@@ -12,8 +12,9 @@
 				display: block;
 				margin: 8px;
 				background: rgba(100,100,100,0.1);
-				border: 6px solid rgba(100,100,100,0.1);
-				padding: 0px 8px;
+        border: 1px solid rgba(100,100,100,0.1);
+        box-shadow: 0px 0px 10px rgba(0,0,0,0.2);
+				padding: 4px 12px; /* 0px 8px; */
 				border-radius: 16px;
 				font-size:12px;
 				user-select: none;
@@ -35,9 +36,14 @@
 		</style>
 	</head>
 	<body style="margin:0px; padding:0px; font-size:16px; font-family:courier-new garamond helveticaneue-light; line-height:2rem; position:relative;">
+
+    <!-- <audio id='audio' controls autoplay>
+      <source src="Action_Davis_-_07_-_Japanese.mp3" type="audio/mpeg">
+    </audio> -->
+    
 		<div style='position:absolute; bottom:18px; width:100%; display:flex; flex-flow:row nowrap; align-items:center; justify-content:center;'>
 			<!-- <div id='add_bird_button' class='button'>Add</div> -->
-			<div id='follow_bird_button' class='button'>FOLLOW</div>
+			<div id='follow_bird_button' class='button'>Follow a bird</div>
 			<!-- <div id='flock_button' class='button'>Flock</div> -->
 		</div>
 		<script src="scripts/three.min.js"></script>
@@ -133,7 +139,7 @@
 					var _acceleration = new THREE.Vector3();
 					
 					// Gravitate to center
-					if ( Math.random() > 0.4 ) {
+					if ( Math.random() > 0.5 ) {
 						vector.copy(this.position).normalize().multiplyScalar( - _maxSteerForce * 0.84);
 						_acceleration.add( vector );
 					}
@@ -148,7 +154,7 @@
 					
 				
 					// Flock
-					if ( Math.random() > 0.4 ) {
+					if ( Math.random() > 0.6 ) {
 						var neighbors = this.octree.search(this.position, Bird._neighborhoodRadius, true);
 						_acceleration.add( this.alignment( birds, neighbors ) );
 						_acceleration.add( this.cohesion( birds, neighbors ) );
@@ -197,7 +203,7 @@
 					count = 0;
 					neighbors.forEach(function(neighbor) {
 						bird = neighbor.object.bird;
-						if ( Math.random() > 0.4 ) return; // 60% chance of including neighbor in calculations
+						if ( Math.random() > 0.5 ) return; // 60% chance of including neighbor in calculations
 						distance = bird.position.distanceTo( self.position );
 						if ( distance > 0 && distance <= Bird._neighborhoodRadius ) {
 							posSum.add( bird.position );
@@ -221,7 +227,7 @@
 					repulse = new THREE.Vector3();
 					neighbors.forEach(function(neighbor) {
 						bird = neighbor.object.bird;
-						if ( Math.random() > 0.4 ) return;
+						if ( Math.random() > 0.6 ) return;
 						distance = bird.position.distanceTo( self.position );
 						if ( distance > 0 && distance <= Bird._neighborhoodRadius ) {
 							repulse.subVectors( self.position, bird.position );
@@ -384,6 +390,7 @@
 				camera = new THREE.PerspectiveCamera( 70, SCREEN_WIDTH / SCREEN_HEIGHT, 1, 10000 );
 				camera.rotation.order = 'YXZ';
 				camera.position.z = 800;
+        camera.rotation.x = -Math.PI;
 				scene = new THREE.Scene();
 				
 				// Fog
@@ -414,9 +421,6 @@
 				var material = new THREE.MeshBasicMaterial( {color: 0xFFE001/*Bird.getRandomColor()*/, side:THREE.DoubleSide, wireframe:false, wireframeLinewidth:2, fog:true } );
 				var star = new THREE.Mesh( geometry, material );
 				scene.add(star);
-				
-				// Generate birds. 100 birds seems to be a good performance limit
-				addBirds(40);
 				
 				// Renderer
 				renderer = new THREE.WebGLRenderer();
@@ -460,12 +464,43 @@
 					// setTimeout(() => toggleCameraMode(), Math.round(Math.random() * 10000) + 10000);
 				}
 				toggleCameraMode();
+        
+				// Generate birds gradually. 100 birds seems to be a good performance limit
+        var addBirdInterval = function() {
+  				addBirds(20);
+          if (birds.length < 80) {
+          setTimeout(addBirdInterval(), 3000)
+          }
+        }
+        setTimeout(() => {addBirdInterval()}, 2000);
 			}
 			
+      function initAudioAnalyser() {
+        // https://github.com/mrdoob/three.js/blob/master/examples/webaudio_visualizer.html
+        var fftSize = 128;
+        var listener = new THREE.AudioListener();
+  			var audio = new THREE.Audio( listener );
+  			var file = './Action_Davis_-_07_-_Japanese.mp3';
+
+  			if ( /(iPad|iPhone|iPod)/g.test( navigator.userAgent ) ) {
+  				var loader = new THREE.AudioLoader();
+  				loader.load( file, function ( buffer ) {
+  					audio.setBuffer( buffer );
+  					audio.play();
+  				} );
+  			} else {
+  				var mediaElement = new Audio( file );
+  				mediaElement.play();
+          audio.setMediaElementSource( mediaElement );
+        }
+        analyser = new THREE.AudioAnalyser( audio, fftSize );
+      }
+      
 			function toggleFlocking(isFlocking) {
 				birds.forEach(bird => {
 					bird.setBehavior(isFlocking ? 'flocking' : 'orbiting');
 				});
+        flockingMode = !isFlocking
 			}
 			function addBirds(count) {
 				var instantiationRange = 2000;
@@ -478,7 +513,7 @@
 						// Math.random() * instantiationRange - instantiationRange / 2
 						Math.random() * instantiationRange - instantiationRange / 2,
 						Math.random() * instantiationRange - instantiationRange / 2,
-						Math.random() * instantiationRange 
+						Math.random() * instantiationRange + 600
 					));
 					bird.velocity.y = Math.random() * 2 - 1;
 					bird.velocity.z = Math.random() * 2 - 1;
@@ -500,7 +535,7 @@
 				return delta;
 			}
 			function accelerateTowardsBigPerspective() {
-				var zoomOutCameraPosition = new THREE.Vector3(0,600,600);
+				var zoomOutCameraPosition = new THREE.Vector3(0,500,500);
 				var delta = zoomOutCameraPosition.clone().sub(camera.position);
 				return delta;
 			}
@@ -532,7 +567,7 @@
 				} else {
 					cameraFocusPosition = new THREE.Vector3(0, 0, 0);
 				}
-				var rotationFriction = 0.1;
+				var rotationFriction = 0.01;
 				var startRotation = new THREE.Euler().copy( camera.rotation ); // record initial camera rotation
 				camera.lookAt( cameraFocusPosition ); // rotate camera to look at the target bird
 				var endRotation = new THREE.Euler().copy( camera.rotation ); // record desired camera rotation
@@ -547,13 +582,47 @@
 				// camera.rotation.x = camera.rotation.x + cameraRy * 90 * Math.PI/180;
 				
 				// Render HUD
-				var distance = birds[targetBirdIndex].position.distanceTo(camera.position);
-				var scaleY = Math.tan(THREE.Math.degToRad( camera.fov )  * Math.PI/ 180 * 0.5) * distance * 2
-				var scaleX = scaleY * camera.aspect;
-				var originalSize = 400;
-				var size = originalSize / scaleX;
-				
+        // var distance = birds[targetBirdIndex].position.distanceTo(camera.position);
+        // var scaleY = Math.tan(THREE.Math.degToRad( camera.fov )  * Math.PI/ 180 * 0.5) * distance * 2
+        // var scaleX = scaleY * camera.aspect;
+        // var originalSize = 400;
+        // var size = originalSize / scaleX;
+  				//         if (analyser) {
+  				// analyser.getFrequencyData();
+  				//         }
+        
 				renderer.render( scene, camera );
 			}
+      
+      
+      // This works...
+      // document.body.onclick = function() {
+      //   const element = document.getElementById('audio');
+      //
+      //   const context = new(window.AudioContext || window.webkitAudioContext)();
+      //
+      //   audio.play();
+      //   const analyser = context.createAnalyser();
+      //
+      //   const source = context.createMediaElementSource(element);
+      //   source.connect(analyser);
+      //
+      //   analyser.connect(context.destination);
+      //   analyser.fftSize = 2048;
+      //
+      //   const frequencyData = new Uint8Array(analyser.frequencyBinCount);
+      //
+      //   setInterval(() => {
+      //     analyser.getByteTimeDomainData(frequencyData);
+      //
+      //     console.log(frequencyData);
+      //   }, 1000);
+      // }
 		</script>
 </body></html>
+
+<!--
+https://freemusicarchive.org/music/Audraulic/Quadrate_Patterns/Audraulic_-_Quadrate_Patterns_-_07_Mountains_in_the_Sky_1277
+https://freemusicarchive.org/music/Action_Davis/Beats_EP/Action_Davis_-_Beats_EP_-_07_Japanese
+
+-->
