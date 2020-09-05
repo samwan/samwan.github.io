@@ -154,7 +154,7 @@
 					
 				
 					// Flock
-					if ( Math.random() > 0.6 ) {
+					if ( Math.random() > 0.5 ) {
 						var neighbors = this.octree.search(this.position, Bird._neighborhoodRadius, true);
 						_acceleration.add( this.alignment( birds, neighbors ) );
 						_acceleration.add( this.cohesion( birds, neighbors ) );
@@ -466,13 +466,15 @@
 				toggleCameraMode();
         
 				// Generate birds gradually. 100 birds seems to be a good performance limit
-        var addBirdInterval = function() {
-  				addBirds(20);
-          if (birds.length < 80) {
-          setTimeout(addBirdInterval(), 3000)
-          }
-        }
-        setTimeout(() => {addBirdInterval()}, 2000);
+				var amountToAddEachTime = 1;
+		        var addBirdInterval = function() {
+		          if (birds.length < 80) {
+		  			  addBirds(Math.floor(amountToAddEachTime));
+					  amountToAddEachTime *= 1.5;
+					  setTimeout(() => { addBirdInterval(); }, 1500)
+		          }
+		        }
+		        setTimeout(() => {addBirdInterval()}, 500);
 			}
 			
       function initAudioAnalyser() {
