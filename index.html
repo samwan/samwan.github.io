@@ -470,11 +470,11 @@
 		        var addBirdInterval = function() {
 		          if (birds.length < 80) {
 		  			  addBirds(Math.floor(amountToAddEachTime));
-					  amountToAddEachTime *= 1.5;
-					  setTimeout(() => { addBirdInterval(); }, 1500)
+					  amountToAddEachTime *= 1.8;
+					  setTimeout(() => { addBirdInterval(); }, 800)
 		          }
 		        }
-		        setTimeout(() => {addBirdInterval()}, 500);
+		        setTimeout(() => {addBirdInterval()}, 0);
 			}
 			
       function initAudioAnalyser() {
@@ -515,7 +515,7 @@
 						// Math.random() * instantiationRange - instantiationRange / 2
 						Math.random() * instantiationRange - instantiationRange / 2,
 						Math.random() * instantiationRange - instantiationRange / 2,
-						Math.random() * instantiationRange + 600
+						Math.random() * instantiationRange + 400
 					));
 					bird.velocity.y = Math.random() * 2 - 1;
 					bird.velocity.z = Math.random() * 2 - 1;
